@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: wren-mcp-server
+    env: docker
+    plan: starter
+    region: oregon
+    buildCommand: docker build -t wren-mcp-server .
+    startCommand: docker run -p $PORT:8000 wren-mcp-server
+    envVars:
+      - key: WREN_URL
+        value: localhost:8000
+      - key: CONNECTION_INFO_FILE
+        value: connection_info.json
+      - key: MDL_PATH
+        value: mdl_file.json
+      - key: PYTHONPATH
+        value: /app
+      - key: PYTHONUNBUFFERED
+        value: "1"
+      - key: RENDER_DEPLOYMENT
+        value: "true"
+    healthCheckPath: /health
+    autoDeploy: true
