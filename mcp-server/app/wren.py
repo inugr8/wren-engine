@@ -8,8 +8,14 @@ import httpx
 from mcp.server.fastmcp import FastMCP
 from dto import Manifest, TableColumns
 from utils import dict_to_base64_string, json_to_base64_string
+from fastapi import FastAPI
+from fastapi.responses import PlainTextResponse
+import uvicorn
 
 mcp = FastMCP("Wren Engine")
+
+# Create FastAPI app for web endpoints
+app = FastAPI(title="Wren MCP Server", version="1.0.0")
 
 load_dotenv()
 WREN_URL = os.getenv("WREN_URL", "localhost:8000")
@@ -309,6 +315,28 @@ async def health_check() -> str:
         return "Wren Engine is not healthy"
 
 
+@app.get("/health")
+async def health_check_endpoint():
+    """Health check endpoint for Render"""
+    try:
+        result = await health_check()
+        return PlainTextResponse(result, status_code=200)
+    except Exception as e:
+        return PlainTextResponse(f"Health check failed: {str(e)}", status_code=500)
+
+
+@app.get("/")
+async def root():
+    """Root endpoint"""
+    return {"message": "Wren MCP Server is running"}
+
+
 if __name__ == "__main__":
-    # Initialize and run the server
-    mcp.run(transport="stdio")
+    # Check if we're running in web mode (for Render deployment)
+    if os.getenv("RENDER_DEPLOYMENT", "false").lower() == "true":
+        # Run as web server for Render
+        port = int(os.getenv("PORT", 8000))
+        uvicorn.run(app, host="0.0.0.0", port=port)
+    else:
+        # Run as MCP server (default behavior)
+        mcp.run(transport="stdio")

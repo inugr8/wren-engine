@@ -1,0 +1,95 @@
+{
+  "catalog": "neon",
+  "schema": "public",
+  "dataSource": "postgres",
+  "models": [
+    {
+      "name": "customer",
+      "description": "Customer who rents DVDs",
+      "tableReference": {
+        "table": "customer"
+      },
+      "columns": [
+        {"name": "customer_id", "type": "integer", "description": "Primary key"},
+        {"name": "store_id", "type": "integer", "description": "Store the customer belongs to"},
+        {"name": "first_name", "type": "varchar", "description": "First name"},
+        {"name": "last_name", "type": "varchar", "description": "Last name"},
+        {"name": "email", "type": "varchar", "description": "Email address"},
+        {"name": "address_id", "type": "integer", "description": "Address reference"},
+        {"name": "activebool", "type": "boolean", "description": "Active flag"},
+        {"name": "create_date", "type": "date", "description": "Account creation date"},
+        {"name": "last_update", "type": "timestamp", "description": "Last update timestamp"},
+        {"name": "active", "type": "integer", "description": "Active status"}
+      ]
+    },
+    {
+      "name": "film",
+      "description": "Movies available for rental",
+      "tableReference": {
+        "table": "film"
+      },
+      "columns": [
+        {"name": "film_id", "type": "integer"},
+        {"name": "title", "type": "varchar"},
+        {"name": "description", "type": "text"},
+        {"name": "release_year", "type": "integer"},
+        {"name": "language_id", "type": "integer"},
+        {"name": "rental_duration", "type": "integer"},
+        {"name": "rental_rate", "type": "numeric"},
+        {"name": "length", "type": "integer"},
+        {"name": "replacement_cost", "type": "numeric"},
+        {"name": "rating", "type": "varchar"},
+        {"name": "last_update", "type": "timestamp"}
+      ]
+    },
+    {
+      "name": "rental",
+      "description": "DVD rental events",
+      "tableReference": {
+        "table": "rental"
+      },
+      "columns": [
+        {"name": "rental_id", "type": "integer"},
+        {"name": "rental_date", "type": "timestamp"},
+        {"name": "inventory_id", "type": "integer"},
+        {"name": "customer_id", "type": "integer"},
+        {"name": "return_date", "type": "timestamp"},
+        {"name": "staff_id", "type": "integer"},
+        {"name": "last_update", "type": "timestamp"}
+      ]
+    },
+    {
+      "name": "inventory",
+      "description": "Inventory items",
+      "tableReference": {
+        "table": "inventory"
+      },
+      "columns": [
+        {"name": "inventory_id", "type": "integer"},
+        {"name": "film_id", "type": "integer"},
+        {"name": "store_id", "type": "integer"},
+        {"name": "last_update", "type": "timestamp"}
+      ]
+    }
+  ],
+  "relationships": [
+    {
+      "name": "rental_to_customer",
+      "models": ["rental", "customer"],
+      "joinType": "MANY_TO_ONE",
+      "condition": "rental.customer_id = customer.customer_id"
+    },
+    {
+      "name": "rental_to_inventory",
+      "models": ["rental", "inventory"],
+      "joinType": "MANY_TO_ONE",
+      "condition": "rental.inventory_id = inventory.inventory_id"
+    },
+    {
+      "name": "inventory_to_film",
+      "models": ["inventory", "film"],
+      "joinType": "MANY_TO_ONE",
+      "condition": "inventory.film_id = film.film_id"
+    }
+  ]
+}

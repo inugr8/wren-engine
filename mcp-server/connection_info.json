@@ -1,0 +1,8 @@
+{
+    "host": "ep-wispy-heart-ae6axptv.c-2.us-east-2.aws.neon.tech",
+    "port": "5432",
+    "database": "neondb",
+    "user": "neondb_owner",
+    "password": "npg_wo7LXhSuex0q",
+    "sslmode": "require"
+}

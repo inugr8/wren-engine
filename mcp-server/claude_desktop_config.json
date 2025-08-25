@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+              "wren": {
+            "command": "/Library/Frameworks/Python.framework/Versions/3.12/bin/uv",
+            "args": [
+                "--directory",
+                "/Users/ishanusrivastava/Desktop/wren-engine/mcp-server",
+                "run",
+                "app/wren.py"
+            ],
+            "autoApprove": [],
+            "disabled": false
+        }
+  }
+}
