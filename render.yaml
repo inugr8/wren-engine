@@ -5,7 +5,6 @@ services:
     plan: starter
     region: oregon
     buildCommand: docker build -t wren-mcp-server .
-    startCommand: docker run -p $PORT:8000 wren-mcp-server
     envVars:
       - key: WREN_URL
         value: localhost:8000
