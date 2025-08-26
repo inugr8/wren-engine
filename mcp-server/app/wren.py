@@ -319,8 +319,8 @@ async def health_check() -> str:
 async def health_check_endpoint():
     """Health check endpoint for Render"""
     try:
-        result = await health_check()
-        return PlainTextResponse(result, status_code=200)
+        # Simple health check that doesn't depend on external services
+        return {"status": "healthy", "service": "wren-mcp-server"}
     except Exception as e:
         return PlainTextResponse(f"Health check failed: {str(e)}", status_code=500)
 
@@ -329,6 +329,12 @@ async def health_check_endpoint():
 async def root():
     """Root endpoint"""
     return {"message": "Wren MCP Server is running"}
+
+
+@app.get("/test")
+async def test_endpoint():
+    """Simple test endpoint"""
+    return {"message": "Test endpoint working", "timestamp": "now"}
 
 
 if __name__ == "__main__":

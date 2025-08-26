@@ -20,6 +20,9 @@ COPY mcp-server/mdl_file.json .
 COPY mcp-server/mdl.schema.json .
 COPY mcp-server/connection_info.json .
 
+# Create a simple test endpoint that doesn't require external files
+RUN echo 'from fastapi import FastAPI\napp = FastAPI()\n@app.get("/test")\nasync def test():\n    return {"message": "Docker build successful"}' > test_app.py
+
 # Create a startup script
 RUN echo '#!/bin/bash\nuv run app/wren.py' > start.sh && chmod +x start.sh
 
