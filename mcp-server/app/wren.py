@@ -15,7 +15,25 @@ import uvicorn
 mcp = FastMCP("Wren Engine")
 
 # Create FastAPI app for web endpoints
-app = FastAPI(title="Wren MCP Server", version="1.0.0")
+app = FastAPI(
+    title="Wren MCP Server",
+    version="1.0.0",
+    description="A Model Context Protocol (MCP) server for Wren Engine database operations",
+    openapi_tags=[
+        {
+            "name": "health",
+            "description": "Health check endpoints"
+        },
+        {
+            "name": "mcp",
+            "description": "Model Context Protocol endpoints"
+        },
+        {
+            "name": "test",
+            "description": "Test and utility endpoints"
+        }
+    ]
+)
 
 load_dotenv()
 WREN_URL = os.getenv("WREN_URL", "localhost:8000")
@@ -315,48 +333,92 @@ async def health_check() -> str:
         return "Wren Engine is not healthy"
 
 
-@app.get("/health")
+from pydantic import BaseModel
+from typing import List, Dict, Any, Optional
+
+class HealthResponse(BaseModel):
+    status: str
+    service: str
+
+class RootResponse(BaseModel):
+    message: str
+
+class TestResponse(BaseModel):
+    message: str
+    timestamp: str
+
+class MCPDiscoveryResponse(BaseModel):
+    name: str
+    version: str
+    protocol: str
+    capabilities: Dict[str, bool]
+
+class MCPTool(BaseModel):
+    name: str
+    description: str
+    inputSchema: Dict[str, Any]
+
+class MCPToolsListResponse(BaseModel):
+    id: Optional[int]
+    result: Dict[str, List[MCPTool]]
+
+class MCPContent(BaseModel):
+    type: str
+    text: str
+
+class MCPToolCallResponse(BaseModel):
+    id: Optional[int]
+    result: Dict[str, List[MCPContent]]
+
+class MCPError(BaseModel):
+    id: Optional[int]
+    error: Dict[str, Any]
+
+class MCPRequest(BaseModel):
+    id: Optional[int]
+    method: str
+    params: Optional[Dict[str, Any]] = None
+
+class MCPResponse(BaseModel):
+    id: Optional[int]
+    result: Optional[Dict[str, Any]] = None
+    error: Optional[Dict[str, Any]] = None
+
+@app.get("/health", response_model=HealthResponse, tags=["health"])
 async def health_check_endpoint():
     """Health check endpoint for Render"""
     try:
         # Simple health check that doesn't depend on external services
-        return {"status": "healthy", "service": "wren-mcp-server"}
+        return HealthResponse(status="healthy", service="wren-mcp-server")
     except Exception as e:
         return PlainTextResponse(f"Health check failed: {str(e)}", status_code=500)
 
 
-@app.get("/")
+@app.get("/", response_model=RootResponse, tags=["test"])
 async def root():
     """Root endpoint"""
-    return {"message": "Wren MCP Server is running"}
+    return RootResponse(message="Wren MCP Server is running")
 
 
-@app.get("/test")
+@app.get("/test", response_model=TestResponse, tags=["test"])
 async def test_endpoint():
     """Simple test endpoint"""
-    return {"message": "Test endpoint working", "timestamp": "now"}
+    return TestResponse(message="Test endpoint working", timestamp="now")
 
 
-@app.post("/mcp")
-async def mcp_endpoint(request: dict):
+@app.post("/mcp", response_model=MCPResponse, tags=["mcp"])
+async def mcp_endpoint(request: MCPRequest):
     """MCP protocol endpoint for remote connections"""
     # Add CORS headers for MCP protocol
     from fastapi.responses import JSONResponse
     
     # Handle MCP protocol requests
     try:
-        # Validate request format
-        if not isinstance(request, dict):
-            return JSONResponse(
-                status_code=400,
-                content={"error": {"code": -32600, "message": "Invalid request format"}}
-            )
-        
         # Extract request ID for response
-        request_id = request.get("id")
+        request_id = request.id
         
-        if "method" in request:
-            method = request["method"]
+        if request.method:
+            method = request.method
             if method == "tools/list":
                 # Return available tools in MCP format
                 tools = [
@@ -489,8 +551,9 @@ async def mcp_endpoint(request: dict):
                 return {"id": request_id, "result": {"tools": tools}}
             elif method == "tools/call":
                 # Handle tool calls
-                tool_name = request.get("params", {}).get("name")
-                arguments = request.get("params", {}).get("arguments", {})
+                params = request.params or {}
+                tool_name = params.get("name")
+                arguments = params.get("arguments", {})
                 
                 if tool_name == "health_check":
                     result = await health_check()
@@ -604,18 +667,15 @@ async def mcp_endpoint(request: dict):
         return {"error": {"code": -32603, "message": f"Internal error: {str(e)}"}}
 
 
-@app.get("/mcp")
+@app.get("/mcp", response_model=MCPDiscoveryResponse, tags=["mcp"])
 async def mcp_discovery():
     """MCP discovery endpoint"""
-    return {
-        "name": "wren-mcp-server",
-        "version": "1.0.0",
-        "protocol": "mcp",
-        "capabilities": {
-            "tools": True,
-            "resources": False
-        }
-    }
+    return MCPDiscoveryResponse(
+        name="wren-mcp-server",
+        version="1.0.0",
+        protocol="mcp",
+        capabilities={"tools": True, "resources": False}
+    )
 
 
 if __name__ == "__main__":
