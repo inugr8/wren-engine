@@ -337,6 +337,62 @@ async def test_endpoint():
     return {"message": "Test endpoint working", "timestamp": "now"}
 
 
+@app.post("/mcp")
+async def mcp_endpoint(request: dict):
+    """MCP protocol endpoint for remote connections"""
+    try:
+        # Handle MCP protocol requests
+        if "method" in request:
+            method = request["method"]
+            if method == "tools/list":
+                # Return available tools
+                tools = [
+                    {"name": "health_check", "description": "Check the health of Wren Engine"},
+                    {"name": "deploy", "description": "Deploy the MDL JSON schema to Wren Engine"},
+                    {"name": "query", "description": "Query the Wren Engine with the given SQL query"},
+                    {"name": "dry_run", "description": "Dry run the query in Wren Engine"},
+                    {"name": "get_manifest", "description": "Get the current deployed manifest in Wren Engine"},
+                    {"name": "get_available_tables", "description": "Get the available tables in Wren Engine"},
+                    {"name": "get_table_columns_info", "description": "Get the column info for the given table and column names"},
+                    {"name": "get_table_info", "description": "Get the table info for the given table name"},
+                    {"name": "get_column_info", "description": "Get the column info for the given table and column name"},
+                    {"name": "get_relationships", "description": "Get the relationships in Wren Engine"}
+                ]
+                return {"result": {"tools": tools}}
+            elif method == "tools/call":
+                # Handle tool calls
+                tool_name = request.get("params", {}).get("name")
+                if tool_name == "health_check":
+                    result = await health_check()
+                    return {"result": {"content": [{"type": "text", "text": result}]}}
+                elif tool_name == "query":
+                    sql = request.get("params", {}).get("arguments", {}).get("sql", "")
+                    result = await make_query_request(sql)
+                    return {"result": {"content": [{"type": "text", "text": str(result)}]}}
+                else:
+                    return {"error": {"code": -32601, "message": f"Method {method} not found"}}
+            else:
+                return {"error": {"code": -32601, "message": f"Method {method} not found"}}
+        else:
+            return {"error": {"code": -32600, "message": "Invalid request"}}
+    except Exception as e:
+        return {"error": {"code": -32603, "message": f"Internal error: {str(e)}"}}
+
+
+@app.get("/mcp")
+async def mcp_discovery():
+    """MCP discovery endpoint"""
+    return {
+        "name": "wren-mcp-server",
+        "version": "1.0.0",
+        "protocol": "mcp",
+        "capabilities": {
+            "tools": True,
+            "resources": False
+        }
+    }
+
+
 if __name__ == "__main__":
     # Check if we're running in web mode (for Render deployment)
     if os.getenv("RENDER_DEPLOYMENT", "false").lower() == "true":
