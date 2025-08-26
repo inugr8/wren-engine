@@ -340,37 +340,262 @@ async def test_endpoint():
 @app.post("/mcp")
 async def mcp_endpoint(request: dict):
     """MCP protocol endpoint for remote connections"""
+    # Add CORS headers for MCP protocol
+    from fastapi.responses import JSONResponse
+    
+    # Handle MCP protocol requests
     try:
-        # Handle MCP protocol requests
+        # Validate request format
+        if not isinstance(request, dict):
+            return JSONResponse(
+                status_code=400,
+                content={"error": {"code": -32600, "message": "Invalid request format"}}
+            )
+        
+        # Extract request ID for response
+        request_id = request.get("id")
+        
         if "method" in request:
             method = request["method"]
             if method == "tools/list":
-                # Return available tools
+                # Return available tools in MCP format
                 tools = [
-                    {"name": "health_check", "description": "Check the health of Wren Engine"},
-                    {"name": "deploy", "description": "Deploy the MDL JSON schema to Wren Engine"},
-                    {"name": "query", "description": "Query the Wren Engine with the given SQL query"},
-                    {"name": "dry_run", "description": "Dry run the query in Wren Engine"},
-                    {"name": "get_manifest", "description": "Get the current deployed manifest in Wren Engine"},
-                    {"name": "get_available_tables", "description": "Get the available tables in Wren Engine"},
-                    {"name": "get_table_columns_info", "description": "Get the column info for the given table and column names"},
-                    {"name": "get_table_info", "description": "Get the table info for the given table name"},
-                    {"name": "get_column_info", "description": "Get the column info for the given table and column name"},
-                    {"name": "get_relationships", "description": "Get the relationships in Wren Engine"}
+                    {
+                        "name": "health_check",
+                        "description": "Check the health of Wren Engine",
+                        "inputSchema": {
+                            "type": "object",
+                            "properties": {},
+                            "required": []
+                        }
+                    },
+                    {
+                        "name": "deploy",
+                        "description": "Deploy the MDL JSON schema to Wren Engine",
+                        "inputSchema": {
+                            "type": "object",
+                            "properties": {
+                                "mdl": {
+                                    "type": "object",
+                                    "description": "MDL manifest to deploy"
+                                }
+                            },
+                            "required": ["mdl"]
+                        }
+                    },
+                    {
+                        "name": "query",
+                        "description": "Query the Wren Engine with the given SQL query",
+                        "inputSchema": {
+                            "type": "object",
+                            "properties": {
+                                "sql": {
+                                    "type": "string",
+                                    "description": "SQL query to execute"
+                                }
+                            },
+                            "required": ["sql"]
+                        }
+                    },
+                    {
+                        "name": "dry_run",
+                        "description": "Dry run the query in Wren Engine",
+                        "inputSchema": {
+                            "type": "object",
+                            "properties": {
+                                "sql": {
+                                    "type": "string",
+                                    "description": "SQL query to dry run"
+                                }
+                            },
+                            "required": ["sql"]
+                        }
+                    },
+                    {
+                        "name": "get_manifest",
+                        "description": "Get the current deployed manifest in Wren Engine",
+                        "inputSchema": {
+                            "type": "object",
+                            "properties": {},
+                            "required": []
+                        }
+                    },
+                    {
+                        "name": "get_available_tables",
+                        "description": "Get the available tables in Wren Engine",
+                        "inputSchema": {
+                            "type": "object",
+                            "properties": {},
+                            "required": []
+                        }
+                    },
+                    {
+                        "name": "get_table_columns_info",
+                        "description": "Get the column info for the given table and column names",
+                        "inputSchema": {
+                            "type": "object",
+                            "properties": {
+                                "table_columns": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "object",
+                                        "properties": {
+                                            "table_name": {"type": "string"},
+                                            "column_names": {
+                                                "type": "array",
+                                                "items": {"type": "string"}
+                                            }
+                                        }
+                                    }
+                                },
+                                "full_column_info": {"type": "boolean"}
+                            },
+                            "required": ["table_columns"]
+                        }
+                    },
+                    {
+                        "name": "get_table_info",
+                        "description": "Get the table info for the given table name",
+                        "inputSchema": {
+                            "type": "object",
+                            "properties": {
+                                "table_name": {"type": "string"}
+                            },
+                            "required": ["table_name"]
+                        }
+                    },
+                    {
+                        "name": "get_column_info",
+                        "description": "Get the column info for the given table and column name",
+                        "inputSchema": {
+                            "type": "object",
+                            "properties": {
+                                "table_name": {"type": "string"},
+                                "column_name": {"type": "string"}
+                            },
+                            "required": ["table_name", "column_name"]
+                        }
+                    },
+                    {
+                        "name": "get_relationships",
+                        "description": "Get the relationships in Wren Engine",
+                        "inputSchema": {
+                            "type": "object",
+                            "properties": {},
+                            "required": []
+                        }
+                    }
                 ]
-                return {"result": {"tools": tools}}
+                return {"id": request_id, "result": {"tools": tools}}
             elif method == "tools/call":
                 # Handle tool calls
                 tool_name = request.get("params", {}).get("name")
+                arguments = request.get("params", {}).get("arguments", {})
+                
                 if tool_name == "health_check":
                     result = await health_check()
-                    return {"result": {"content": [{"type": "text", "text": result}]}}
+                    return {"id": request_id, "result": {"content": [{"type": "text", "text": result}]}}
                 elif tool_name == "query":
-                    sql = request.get("params", {}).get("arguments", {}).get("sql", "")
+                    sql = arguments.get("sql", "")
                     result = await make_query_request(sql)
                     return {"result": {"content": [{"type": "text", "text": str(result)}]}}
+                elif tool_name == "dry_run":
+                    sql = arguments.get("sql", "")
+                    result = await make_query_request(sql, dry_run=True)
+                    return {"result": {"content": [{"type": "text", "text": str(result)}]}}
+                elif tool_name == "get_manifest":
+                    try:
+                        with open("mdl_file.json") as f:
+                            mdl = json.load(f)
+                        return {"result": {"content": [{"type": "text", "text": json.dumps(mdl, indent=2)}]}}
+                    except Exception as e:
+                        return {"result": {"content": [{"type": "text", "text": f"Error: {str(e)}"}]}}
+                elif tool_name == "get_available_tables":
+                    try:
+                        with open("mdl_file.json") as f:
+                            mdl = json.load(f)
+                        tables = [model["name"] for model in mdl["models"]]
+                        return {"result": {"content": [{"type": "text", "text": json.dumps(tables, indent=2)}]}}
+                    except Exception as e:
+                        return {"result": {"content": [{"type": "text", "text": f"Error: {str(e)}"}]}}
+                elif tool_name == "get_table_columns_info":
+                    try:
+                        with open("mdl_file.json") as f:
+                            mdl = json.load(f)
+                        table_columns = arguments.get("table_columns", [])
+                        full_column_info = arguments.get("full_column_info", False)
+                        
+                        result = []
+                        for table_column in table_columns:
+                            table_name = table_column["table_name"]
+                            column_names = table_column.get("column_names", [])
+                            
+                            tables = [table for table in mdl["models"] if table["name"] == table_name]
+                            if len(tables) == 0:
+                                result.append({"table_name": table_name, "error": "Table not found"})
+                                continue
+                            
+                            if len(tables) > 1:
+                                result.append({"table_name": table_name, "error": "Multiple tables found"})
+                                continue
+                            
+                            if column_names:
+                                columns = [col for col in tables[0]["columns"] if col["name"] in column_names]
+                            else:
+                                columns = tables[0]["columns"]
+                            
+                            if not full_column_info:
+                                columns = [col["name"] for col in columns]
+                            
+                            result.append({"table_name": table_name, "columns": columns})
+                        
+                        return {"result": {"content": [{"type": "text", "text": json.dumps(result, indent=2)}]}}
+                    except Exception as e:
+                        return {"result": {"content": [{"type": "text", "text": f"Error: {str(e)}"}]}}
+                elif tool_name == "get_table_info":
+                    try:
+                        with open("mdl_file.json") as f:
+                            mdl = json.load(f)
+                        table_name = arguments.get("table_name", "")
+                        result = [table for table in mdl["models"] if table["name"] == table_name]
+                        for table in result:
+                            table["columns"] = [col["name"] for col in table["columns"]]
+                        return {"result": {"content": [{"type": "text", "text": json.dumps(result, indent=2)}]}}
+                    except Exception as e:
+                        return {"result": {"content": [{"type": "text", "text": f"Error: {str(e)}"}]}}
+                elif tool_name == "get_column_info":
+                    try:
+                        with open("mdl_file.json") as f:
+                            mdl = json.load(f)
+                        table_name = arguments.get("table_name", "")
+                        column_name = arguments.get("column_name", "")
+                        
+                        tables = [table for table in mdl["models"] if table["name"] == table_name]
+                        if len(tables) == 0:
+                            return {"result": {"content": [{"type": "text", "text": "Table not found"}]}}
+                        
+                        if len(tables) > 1:
+                            return {"result": {"content": [{"type": "text", "text": "Multiple tables found"}]}}
+                        
+                        result = [col for col in tables[0]["columns"] if col["name"] == column_name]
+                        if len(result) == 0:
+                            return {"result": {"content": [{"type": "text", "text": "Column not found"}]}}
+                        
+                        if len(result) > 1:
+                            return {"result": {"content": [{"type": "text", "text": "Multiple columns found"}]}}
+                        
+                        return {"result": {"content": [{"type": "text", "text": json.dumps(result[0], indent=2)}]}}
+                    except Exception as e:
+                        return {"result": {"content": [{"type": "text", "text": f"Error: {str(e)}"}]}}
+                elif tool_name == "get_relationships":
+                    try:
+                        with open("mdl_file.json") as f:
+                            mdl = json.load(f)
+                        return {"result": {"content": [{"type": "text", "text": json.dumps(mdl["relationships"], indent=2)}]}}
+                    except Exception as e:
+                        return {"result": {"content": [{"type": "text", "text": f"Error: {str(e)}"}]}}
                 else:
-                    return {"error": {"code": -32601, "message": f"Method {method} not found"}}
+                    return {"error": {"code": -32601, "message": f"Tool {tool_name} not found"}}
             else:
                 return {"error": {"code": -32601, "message": f"Method {method} not found"}}
         else:
