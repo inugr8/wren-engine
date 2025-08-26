@@ -25,7 +25,7 @@ Make sure your code is pushed to a GitHub repository.
 - **Name**: `wren-mcp-server` (or your preferred name)
 - **Environment**: `Docker`
 - **Region**: Choose the region closest to your users
-- **Branch**: `main` (or your default branch)
+- **Branch**: `dev` (or your default branch)
 - **Build Command**: `docker build -t wren-mcp-server .`
 - **Start Command**: `docker run -p $PORT:8000 wren-mcp-server`
 
