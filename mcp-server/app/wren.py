@@ -9,7 +9,8 @@ from mcp.server.fastmcp import FastMCP
 from dto import Manifest, TableColumns
 from utils import dict_to_base64_string, json_to_base64_string
 from fastapi import FastAPI
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import PlainTextResponse, HTMLResponse
+from fastapi.staticfiles import StaticFiles
 import uvicorn
 
 mcp = FastMCP("Wren Engine")
@@ -412,6 +413,16 @@ async def root():
 async def test_endpoint():
     """Simple test endpoint"""
     return TestResponse(message="Test endpoint working", timestamp="now")
+
+
+@app.get("/web", response_class=HTMLResponse, tags=["test"])
+async def web_interface():
+    """Web interface for testing MCP server"""
+    try:
+        with open("static/index.html", "r") as f:
+            return HTMLResponse(content=f.read())
+    except FileNotFoundError:
+        return HTMLResponse(content="<h1>Web interface not found</h1><p>Please check if static/index.html exists</p>")
 
 
 @app.post("/mcp", response_model=MCPResponse, tags=["mcp"])
