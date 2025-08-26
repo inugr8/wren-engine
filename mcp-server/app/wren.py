@@ -324,13 +324,21 @@ async def health_check() -> str:
     Check the health of Wren Engine
     """
     try:
-        response = await make_query_request("SELECT 1")
-        if response.status_code == 200:
-            return "Wren Engine is healthy"
+        # For Render deployment, just check if the service is running
+        if os.getenv("RENDER_DEPLOYMENT", "false").lower() == "true":
+            return "Wren MCP Server is healthy and running on Render"
+        else:
+            # For local MCP mode, check Wren Engine connection
+            response = await make_query_request("SELECT 1")
+            if response.status_code == 200:
+                return "Wren Engine is healthy"
+            else:
+                return "Wren Engine is not healthy"
+    except Exception as e:
+        if os.getenv("RENDER_DEPLOYMENT", "false").lower() == "true":
+            return "Wren MCP Server is healthy and running on Render"
         else:
             return "Wren Engine is not healthy"
-    except Exception as e:
-        return "Wren Engine is not healthy"
 
 
 from pydantic import BaseModel
@@ -561,26 +569,26 @@ async def mcp_endpoint(request: MCPRequest):
                 elif tool_name == "query":
                     sql = arguments.get("sql", "")
                     result = await make_query_request(sql)
-                    return {"result": {"content": [{"type": "text", "text": str(result)}]}}
+                    return {"id": request_id, "result": {"content": [{"type": "text", "text": str(result)}]}}
                 elif tool_name == "dry_run":
                     sql = arguments.get("sql", "")
                     result = await make_query_request(sql, dry_run=True)
-                    return {"result": {"content": [{"type": "text", "text": str(result)}]}}
+                    return {"id": request_id, "result": {"content": [{"type": "text", "text": str(result)}]}}
                 elif tool_name == "get_manifest":
                     try:
                         with open("mdl_file.json") as f:
                             mdl = json.load(f)
-                        return {"result": {"content": [{"type": "text", "text": json.dumps(mdl, indent=2)}]}}
+                        return {"id": request_id, "result": {"content": [{"type": "text", "text": json.dumps(mdl, indent=2)}]}}
                     except Exception as e:
-                        return {"result": {"content": [{"type": "text", "text": f"Error: {str(e)}"}]}}
+                        return {"id": request_id, "result": {"content": [{"type": "text", "text": f"Error: {str(e)}"}]}}
                 elif tool_name == "get_available_tables":
                     try:
                         with open("mdl_file.json") as f:
                             mdl = json.load(f)
                         tables = [model["name"] for model in mdl["models"]]
-                        return {"result": {"content": [{"type": "text", "text": json.dumps(tables, indent=2)}]}}
+                        return {"id": request_id, "result": {"content": [{"type": "text", "text": json.dumps(tables, indent=2)}]}}
                     except Exception as e:
-                        return {"result": {"content": [{"type": "text", "text": f"Error: {str(e)}"}]}}
+                        return {"id": request_id, "result": {"content": [{"type": "text", "text": f"Error: {str(e)}"}]}}
                 elif tool_name == "get_table_columns_info":
                     try:
                         with open("mdl_file.json") as f:
